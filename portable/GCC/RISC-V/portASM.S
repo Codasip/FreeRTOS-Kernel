@@ -327,7 +327,11 @@ exit_without_context_switch:
 /*-----------------------------------------------------------*/
 
 .section .text.freertos_risc_v_trap_handler
+#if( portasmHAS_CLIC != 0 )
+.align 64   /* Trap handler needs to be aligned to 64 byte boundary for the CLIC mtvec register */
+#else
 .align 8
+#endif
 freertos_risc_v_trap_handler:
     portcontextSAVE_CONTEXT_INTERNAL
 
@@ -369,6 +373,12 @@ application_interrupt_handler:
     j processed_source
 
 handle_exception:
+#if( portasmHAS_CLIC != 0 )
+    /* Mask off new CLIC MS bits in mcause (a0), exccode is in Least Significant 12 bits [11:0] */
+    li t0, 0xfff
+    and a0, a0, t0
+#endif
+
     /* a0 contains mcause. */
     li t0, 11                                   /* 11 == environment call. */
     bne a0, t0, application_exception_handler   /* Not an M environment call, so some other exception. */

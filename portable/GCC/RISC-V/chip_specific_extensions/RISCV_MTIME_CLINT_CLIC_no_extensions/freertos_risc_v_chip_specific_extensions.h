@@ -46,7 +46,7 @@
  * compiler's!) include path.  For example, if the chip in use includes a core
  * local interrupter (CLINT) and does not include any chip specific register
  * extensions then add the path below to the assembler's include path:
- * FreeRTOS\Source\portable\GCC\RISC-V\chip_specific_extensions\RISCV_MTIME_CLINT_no_extensions
+ * FreeRTOS\Source\portable\GCC\RISC-V\chip_specific_extensions\RISCV_MTIME_CLINT_CLIC_no_extensions
  *
  */
 
@@ -56,7 +56,7 @@
 
 #define portasmHAS_SIFIVE_CLINT           1
 #define portasmHAS_MTIME                  1
-#define portasmHAS_CLIC                   0
+#define portasmHAS_CLIC                   1
 #define portasmADDITIONAL_CONTEXT_SIZE    0
 
 .macro portasmSAVE_ADDITIONAL_REGISTERS
