@@ -328,7 +328,7 @@ exit_without_context_switch:
 
 .section .text.freertos_risc_v_trap_handler
 #if( portasmHAS_CLIC != 0 )
-.align 64   /* Trap handler needs to be aligned to 64 byte boundary for the CLIC mtvec register */
+.balign 64   /* Trap handler needs to be aligned to 64 byte boundary for the CLIC mtvec register */
 #else
 .align 8
 #endif
