@@ -1,6 +1,22 @@
 [![CMock Unit Tests](https://github.com/FreeRTOS/FreeRTOS-Kernel/actions/workflows/unit-tests.yml/badge.svg?branch=main&event=push)](https://github.com/FreeRTOS/FreeRTOS-Kernel/actions/workflows/unit-tests.yml?query=branch%3Amain+event%3Apush+workflow%3A%22CMock+Unit+Tests%22++)
 [![codecov](https://codecov.io/gh/FreeRTOS/FreeRTOS-Kernel/badge.svg?branch=main)](https://codecov.io/gh/FreeRTOS/FreeRTOS-Kernel)
 
+# Codaip RISC-V Port of FreeRTOS
+
+This is a port of **FreeRTOS** to Codasip's Embedded Cores with the Core Level Interrupt Controller (CLIC) and ACLINT MTimer.
+
+Supported Codasip cores: L100 and L700 series: L110, L730.
+
+## Modified Files
+
+* `portable/GCC/RISC-V/chip_specific_extensions/Pulpino_Vega_RV32M1RM/freertos_risc_v_chip_specific_extensions.h` - Added `#define portasmHAS_CLIC 0`
+* `portable/GCC/RISC-V/chip_specific_extensions/RISCV_MTIME_CLINT_no_extensions/freertos_risc_v_chip_specific_extensions.h` - Added `#define portasmHAS_CLIC 0`
+* `portable/GCC/RISC-V/chip_specific_extensions/RISCV_no_extensions/freertos_risc_v_chip_specific_extensions.h` - Added `#define portasmHAS_CLIC 0`
+* `portable/GCC/RISC-V/portASM.S` - Added Trap handler 64 byte alignment and `mcause` masking when `portasmHAS_CLIC != 0`
+
+## Aditional Files
+* `portable/GCC/RISC-V/chip_specific_extensions/RISCV_MTIME_CLINT_CLIC_no_extensions/freertos_risc_v_chip_specific_extensions.h` - Use for CLIC extension (defines `#define portasmHAS_CLIC 1`)
+
 ## Getting started
 
 This repository contains FreeRTOS kernel source/header files and kernel
