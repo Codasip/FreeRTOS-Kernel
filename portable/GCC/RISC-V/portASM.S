@@ -352,7 +352,7 @@ synchronous_exception:
     j handle_exception
 
 handle_interrupt:
-#if( portasmHAS_MTIME != 0 )
+#if( portasmHAS_MTIME != 0  &&  portasmHAS_CLIC == 0 )
 
     test_if_mtimer:                     /* If there is a CLINT then the mtimer is used to generate the tick interrupt. */
         addi t0, x0, 1
