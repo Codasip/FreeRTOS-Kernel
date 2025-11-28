@@ -47,12 +47,18 @@
  */
 
 /* Type definitions. */
+#ifdef __CHERI_PURE_CAPABILITY__
+    #define portPOINTER_SIZE_TYPE    uintptr_t
+#endif
+
 #if __riscv_xlen == 64
     #define portSTACK_TYPE           uint64_t
     #define portBASE_TYPE            int64_t
     #define portUBASE_TYPE           uint64_t
     #define portMAX_DELAY            ( TickType_t ) 0xffffffffffffffffUL
+#ifndef  portPOINTER_SIZE_TYPE
     #define portPOINTER_SIZE_TYPE    uint64_t
+#endif
 #elif __riscv_xlen == 32
     #define portSTACK_TYPE           uint32_t
     #define portBASE_TYPE            int32_t
@@ -196,6 +202,10 @@ extern size_t xCriticalNesting;
 #elif !defined( configMTIME_BASE_ADDRESS ) || !defined( configMTIMECMP_BASE_ADDRESS )
     #error "configMTIME_BASE_ADDRESS and configMTIMECMP_BASE_ADDRESS must be defined in FreeRTOSConfig.h.  Set them to zero if there is no MTIME (machine time) clock.  See www.FreeRTOS.org/Using-FreeRTOS-on-RISC-V.html"
 #endif /* if defined( configCLINT_BASE_ADDRESS ) && !defined( configMTIME_BASE_ADDRESS ) && ( configCLINT_BASE_ADDRESS == 0 ) */
+
+#ifdef __CHERI_PURE_CAPABILITY__
+void vPortInitialiseCheri( void * pvInitInfiniteCap );
+#endif
 
 /* *INDENT-OFF* */
 #ifdef __cplusplus
