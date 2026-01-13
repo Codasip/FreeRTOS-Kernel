@@ -5,7 +5,9 @@
 
 This is a port of **FreeRTOS** to Codasip's Embedded Cores with the Core Level Interrupt Controller (CLIC) and ACLINT MTimer.
 
-Supported Codasip cores: L100 and L700 series: L110, L730.
+This port also supports **CHERI** on applicable cores. (X730, V730)
+
+Supported Codasip cores: L100, L700 and V700 series: L110, L730, V730, V739.
 
 ## Modified Files
 
@@ -16,6 +18,14 @@ Supported Codasip cores: L100 and L700 series: L110, L730.
 
 ## Aditional Files
 * `portable/GCC/RISC-V/chip_specific_extensions/RISCV_MTIME_CLINT_CLIC_no_extensions/freertos_risc_v_chip_specific_extensions.h` - Use for CLIC extension (defines `#define portasmHAS_CLIC 1`)
+
+## Modified Files (CHERI Port)
+
+* `portable/GCC/RISC-V/port.c` - Added support for CHERI        
+* `portable/GCC/RISC-V/portASM.S` - Added support for CHERI     
+* `portable/GCC/RISC-V/portContext.h` - Added support for CHERI 
+* `portable/GCC/RISC-V/portmacro.h` - Added support for CHERI   
+* `portable/MemMang/heap_4.c` - Added support for CHERI. This is the only heap implementation currently ported to CHERI.        
 
 ## Getting started
 
@@ -45,6 +55,18 @@ Also for contributing and creating a Pull Request please refer to
 of the
 [FreeRTOS 202406.00 LTS](https://github.com/FreeRTOS/FreeRTOS-LTS/tree/202406-LTS)
 release.**
+
+### Getting Started with CHERI
+
+If you are building an application to run on a CHERI core you must first initialise the CHERI capabilities in your application. 
+
+This can be done by calling the following API:
+
+```
+#ifdef __CHERI_PURE_CAPABILITY__
+    vPortInitialiseCheri(cheri_ddc_get());
+#endif
+```
 
 ### Getting help
 
