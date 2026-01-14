@@ -30,6 +30,10 @@
  * Implementation of functions defined in portable.h for the RISC-V port.
  *----------------------------------------------------------*/
 
+#ifdef __CHERI_PURE_CAPABILITY__
+#include <cheriintrin.h>
+#endif
+
 /* Scheduler includes. */
 #include "FreeRTOS.h"
 #include "task.h"
@@ -61,22 +65,28 @@
  * to use a statically allocated array as the interrupt stack.  Alternative leave
  * configISR_STACK_SIZE_WORDS undefined and update the linker script so that a
  * linker variable names __freertos_irq_stack_top has the same value as the top
- * of the stack used by main.  Using the linker script method will repurpose the
- * stack that was used by main before the scheduler was started for use as the
- * interrupt stack after the scheduler has started. */
+ * of the stack used by main, if using CHERI __freertos_irq_stack_bottom must also
+ * be defined.  Using the linker script method will repurpose the stack that was
+ * used by main before the scheduler was started for use as the interrupt stack
+ * after the scheduler has started. */
+
 #ifdef configISR_STACK_SIZE_WORDS
 static __attribute__( ( aligned( 16 ) ) ) StackType_t xISRStack[ configISR_STACK_SIZE_WORDS ] = { 0 };
-const StackType_t xISRStackTop = ( StackType_t ) &( xISRStack[ configISR_STACK_SIZE_WORDS & ~portBYTE_ALIGNMENT_MASK ] );
+const StackType_t *  xISRStackTop = &( xISRStack[ configISR_STACK_SIZE_WORDS & ~portBYTE_ALIGNMENT_MASK ] );
 
 /* Don't use 0xa5 as the stack fill bytes as that is used by the kernel for
  * the task stacks, and so will legitimately appear in many positions within
  * the ISR stack. */
     #define portISR_STACK_FILL_BYTE    0xee
 #else
-    extern const uint32_t __freertos_irq_stack_top[];
-    const StackType_t xISRStackTop = ( StackType_t ) __freertos_irq_stack_top;
+    extern StackType_t __freertos_irq_stack_top[];
+#ifdef __CHERI_PURE_CAPABILITY__
+    StackType_t * xISRStackTop;
+    extern StackType_t __freertos_irq_stack_bottom[];
+#else
+    const StackType_t * xISRStackTop = __freertos_irq_stack_top;
 #endif
-
+#endif
 /*
  * Setup the timer to generate the tick interrupts.  The implementation in this
  * file is weak to allow application writers to change the timer used to
@@ -125,36 +135,73 @@ size_t xTaskReturnAddress = ( size_t ) portTASK_RETURN_ADDRESS;
 
 /*-----------------------------------------------------------*/
 
-#if ( configMTIME_BASE_ADDRESS != 0 ) && ( configMTIMECMP_BASE_ADDRESS != 0 )
+#ifdef __CHERI_PURE_CAPABILITY__
+#if ( configAPPLICATION_ALLOCATED_HEAP != 1 )
+    PRIVILEGED_DATA uint8_t ucHeap[ configTOTAL_HEAP_SIZE ];
+#else 
+    extern uint8_t ucHeap[ configTOTAL_HEAP_SIZE ];
+#endif /* configAPPLICATION_ALLOCATED_HEAP */
+extern void *pvHeapCap;
 
+#if ( configMTIME_BASE_ADDRESS != 0 ) && ( configMTIMECMP_BASE_ADDRESS != 0 )
+volatile uint32_t * pulTimeHigh;
+volatile uint32_t * pulTimeLow;
+#endif
+
+void vPortInitialiseCheri( void * pvInitInfiniteCap ) {
+	// Set up the timer registers.
+#if ( configMTIME_BASE_ADDRESS != 0 ) && ( configMTIMECMP_BASE_ADDRESS != 0 )    
+	pulTimeLow = cheri_bounds_set(cheri_address_set(pvInitInfiniteCap, configMTIME_BASE_ADDRESS), sizeof(uint32_t));
+    pulTimeHigh = cheri_bounds_set(cheri_address_set(pvInitInfiniteCap, configMTIME_BASE_ADDRESS+4UL), sizeof(uint32_t));
+	volatile uint32_t ulHartId;
+    __asm volatile( "csrr %0, mhartid" : "=r"( ulHartId ) );
+    pullMachineTimerCompareRegister = cheri_bounds_set(
+                                          cheri_address_set(pvInitInfiniteCap, ( ullMachineTimerCompareRegisterBase + ( ulHartId * sizeof( uint64_t ) ))),
+                                      sizeof(uint64_t));
+#endif
+    // Set up the ISR stack pointer.
+    #if ! defined( configISR_STACK_SIZE_WORDS ) && defined( __CHERI_PURE_CAPABILITY__ )
+    xISRStackTop = (StackType_t *)cheri_address_set(
+                                    cheri_bounds_set(
+                                        cheri_address_set(pvInitInfiniteCap, (uintptr_t)__freertos_irq_stack_bottom),
+                                    (uintptr_t)__freertos_irq_stack_top - (uintptr_t)__freertos_irq_stack_bottom),
+                                (uintptr_t)__freertos_irq_stack_top);
+    #endif /* configISR_STACK_SIZE_WORDS */
+    pvHeapCap = cheri_bounds_set(cheri_address_set(pvInitInfiniteCap, (uintptr_t)ucHeap), configTOTAL_HEAP_SIZE);
+}
+#endif /* __CHERI_PURE_CAPABILITY__ */
+
+/*-----------------------------------------------------------*/
+
+#if ( configMTIME_BASE_ADDRESS != 0 ) && ( configMTIMECMP_BASE_ADDRESS != 0 )
     void vPortSetupTimerInterrupt( void )
     {
-        uint32_t ulCurrentTimeHigh, ulCurrentTimeLow;
-        volatile uint32_t * const pulTimeHigh = ( volatile uint32_t * const ) ( ( configMTIME_BASE_ADDRESS ) + 4UL ); /* 8-byte type so high 32-bit word is 4 bytes up. */
-        volatile uint32_t * const pulTimeLow = ( volatile uint32_t * const ) ( configMTIME_BASE_ADDRESS );
-        volatile uint32_t ulHartId;
+    uint32_t ulCurrentTimeHigh, ulCurrentTimeLow;
+#ifndef __CHERI_PURE_CAPABILITY__
+	volatile uint32_t * const pulTimeHigh = ( volatile uint32_t * const ) ( ( configMTIME_BASE_ADDRESS ) + 4UL ); /* 8-byte typer so high 32-bit word is 4 bytes up. */
+	volatile uint32_t * const pulTimeLow = ( volatile uint32_t * const ) ( configMTIME_BASE_ADDRESS );
+	volatile uint32_t ulHartId;
+    __asm volatile( "csrr %0, mhartid" : "=r"( ulHartId ) );
+    pullMachineTimerCompareRegister  = ( volatile uint64_t * ) ( ullMachineTimerCompareRegisterBase + ( ulHartId * sizeof( uint64_t ) ) );
+#endif
+    do
+    {
+        ulCurrentTimeHigh = *pulTimeHigh;
+        ulCurrentTimeLow = *pulTimeLow;
+    } while( ulCurrentTimeHigh != *pulTimeHigh );
 
-        __asm volatile ( "csrr %0, mhartid" : "=r" ( ulHartId ) );
+    ullNextTime = ( uint64_t ) ulCurrentTimeHigh;
+    ullNextTime <<= 32ULL; /* High 4-byte word is 32-bits up. */
+    ullNextTime |= ( uint64_t ) ulCurrentTimeLow;
+    ullNextTime += ( uint64_t ) uxTimerIncrementsForOneTick;
+    *pullMachineTimerCompareRegister = ullNextTime;
 
-        pullMachineTimerCompareRegister = ( volatile uint64_t * ) ( ullMachineTimerCompareRegisterBase + ( ulHartId * sizeof( uint64_t ) ) );
-
-        do
-        {
-            ulCurrentTimeHigh = *pulTimeHigh;
-            ulCurrentTimeLow = *pulTimeLow;
-        } while( ulCurrentTimeHigh != *pulTimeHigh );
-
-        ullNextTime = ( uint64_t ) ulCurrentTimeHigh;
-        ullNextTime <<= 32ULL; /* High 4-byte word is 32-bits up. */
-        ullNextTime |= ( uint64_t ) ulCurrentTimeLow;
-        ullNextTime += ( uint64_t ) uxTimerIncrementsForOneTick;
-        *pullMachineTimerCompareRegister = ullNextTime;
-
-        /* Prepare the time to use after the next tick interrupt. */
-        ullNextTime += ( uint64_t ) uxTimerIncrementsForOneTick;
+    /* Prepare the time to use after the next tick interrupt. */
+    ullNextTime += ( uint64_t ) uxTimerIncrementsForOneTick;
     }
 
 #endif /* ( configMTIME_BASE_ADDRESS != 0 ) && ( configMTIME_BASE_ADDRESS != 0 ) */
+
 /*-----------------------------------------------------------*/
 
 BaseType_t xPortStartScheduler( void )
@@ -166,7 +213,7 @@ BaseType_t xPortStartScheduler( void )
         /* Check alignment of the interrupt stack - which is the same as the
          * stack that was being used by main() prior to the scheduler being
          * started. */
-        configASSERT( ( xISRStackTop & portBYTE_ALIGNMENT_MASK ) == 0 );
+        configASSERT( ( (size_t) xISRStackTop & portBYTE_ALIGNMENT_MASK ) == 0 );
 
         #ifdef configISR_STACK_SIZE_WORDS
         {
