@@ -1,6 +1,7 @@
 /*
  * FreeRTOS Kernel V11.2.0
  * Copyright (C) 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2025-2026 Codasip s.r.o.
  *
  * SPDX-License-Identifier: MIT
  *
@@ -163,22 +164,22 @@
 /*-----------------------------------------------------------*/
 
 .extern pxCurrentTCB
-   .extern xISRStackTop
-   .extern xCriticalNesting
-   .extern pxCriticalNesting
+.extern xISRStackTop
+.extern xCriticalNesting
+.extern pxCriticalNesting
 /*-----------------------------------------------------------*/
 
    .macro portcontextSAVE_CONTEXT_INTERNAL
 ADDI SP,SP, -portCONTEXT_SIZE
-store_x X1, 1 * portWORD_SIZE( SP )
-store_x X5, 2 * portWORD_SIZE( SP )
-store_x X6, 3 * portWORD_SIZE( SP )
-store_x X7, 4 * portWORD_SIZE( SP )
-store_x X8, 5 * portWORD_SIZE( SP )
-store_x X9, 6 * portWORD_SIZE( SP )
-store_x X10, 7 * portWORD_SIZE( SP )
-store_x X11, 8 * portWORD_SIZE( SP )
-store_x X12, 9 * portWORD_SIZE( SP )
+store_x  X1,  1 * portWORD_SIZE( SP )
+store_x  X5,  2 * portWORD_SIZE( SP )
+store_x  X6,  3 * portWORD_SIZE( SP )
+store_x  X7,  4 * portWORD_SIZE( SP )
+store_x  X8,  5 * portWORD_SIZE( SP )
+store_x  X9,  6 * portWORD_SIZE( SP )
+store_x X10,  7 * portWORD_SIZE( SP )
+store_x X11,  8 * portWORD_SIZE( SP )
+store_x X12,  9 * portWORD_SIZE( SP )
 store_x X13, 10 * portWORD_SIZE( SP )
 store_x X14, 11 * portWORD_SIZE( SP )
 store_x X15, 12 * portWORD_SIZE( SP )
@@ -201,7 +202,7 @@ store_x X15, 12 * portWORD_SIZE( SP )
     store_x X31, 28 * portWORD_SIZE( SP )
 #endif /* ifndef __riscv_32e */
 
-load_a T0, xCriticalNesting
+load_a T0, xCriticalNesting                                   /* Load the address of xCriticalNesting into T0. */
 load_w t0, 0( T0 )                                            /* Load the value of xCriticalNesting into t0. */
 store_w t0, portCRITICAL_NESTING_OFFSET * portWORD_SIZE( SP ) /* Store the critical nesting value to the stack. */
 
@@ -211,7 +212,7 @@ store_w t0, portMSTATUS_OFFSET * portWORD_SIZE( SP ) /* Store the mstatus value 
 
 portasmSAVE_ADDITIONAL_REGISTERS /* Defined in freertos_risc_v_chip_specific_extensions.h to save any registers unique to the RISC-V implementation. */
 
-load_a T0, pxCurrentTCB
+load_a T0, pxCurrentTCB          /* Load the address of pxCurrentTCB. */
 load_x T0, 0(T0)                 /* Load pxCurrentTCB. */
 store_x SP, 0 ( T0 )             /* Write sp to first TCB member. */
 
@@ -224,8 +225,8 @@ csrr a0, mcause
 csrr A1, MEPC
 ADDI A1, A1, 4          /* Synchronous so update exception return address to the instruction after the instruction that generated the exception. */
 store_x A1, 0 ( SP )    /* Save updated exception return address. */
-load_a SP, xISRStackTop
-load_x SP, 0 ( SP ) /* Switch to ISR stack. */
+load_a SP, xISRStackTop /* Load the address of xISRStackTop. */
+load_x SP, 0 ( SP )     /* Switch to ISR stack. */
    .endm
 /*-----------------------------------------------------------*/
 
@@ -234,15 +235,15 @@ portcontextSAVE_CONTEXT_INTERNAL
 csrr a0, mcause
 csrr A1, MEPC
 store_x A1, 0 ( SP )    /* Asynchronous interrupt so save unmodified exception return address. */
-load_a SP, xISRStackTop
-load_x SP, 0 ( SP ) /* Switch to ISR stack. */
+load_a SP, xISRStackTop /* Load the address of xISRStackTop. */
+load_x SP, 0 ( SP )     /* Switch to ISR stack. */
    .endm
 /*-----------------------------------------------------------*/
 
    .macro portcontextRESTORE_CONTEXT
-load_a T1, pxCurrentTCB 
-load_x T1, 0(T1)/* Load pxCurrentTCB. */
-load_x SP, 0 ( T1 )     /* Read sp from first TCB member. */
+load_a T1, pxCurrentTCB /* Load the address of pxCurrentTCB. */
+load_x T1, 0( T1 )      /* Load pxCurrentTCB. */
+load_x SP, 0( T1 )      /* Read sp from first TCB member. */
 
 /* Load mepc with the address of the instruction in the task to run next. */
 load_x T0, 0 ( SP )
@@ -256,19 +257,19 @@ load_w t0, portMSTATUS_OFFSET * portWORD_SIZE( SP )
 csrw mstatus, t0                                             /* Required for MPIE bit. */
 
 load_w t0, portCRITICAL_NESTING_OFFSET * portWORD_SIZE( SP ) /* Obtain xCriticalNesting value for this task from task's stack. */
-load_a T1, pxCriticalNesting                                 /* Load the address of xCriticalNesting into t1. */
-load_x T1, 0( T1 )
-store_w t0, 0 ( T1 )                                         /* Restore the critical nesting value for this task. */
+load_a T1, pxCriticalNesting                                 /* Load the address of pxCriticalNesting into t1. */
+load_x T1, 0( T1 )                                           /* Load the xCriticalNesting pointer (from *pxCriticalNesting) in to T1 */
+store_w t0, 0 ( T1 )                                         /* Restore the critical nesting value for this task to *xCriticalNesting. */
 
-load_x X1, 1 * portWORD_SIZE( SP )
-load_x X5, 2 * portWORD_SIZE( SP )
-load_x X6, 3 * portWORD_SIZE( SP )
-load_x X7, 4 * portWORD_SIZE( SP )
-load_x X8, 5 * portWORD_SIZE( SP )
-load_x X9, 6 * portWORD_SIZE( SP )
-load_x X10, 7 * portWORD_SIZE( SP )
-load_x X11, 8 * portWORD_SIZE( SP )
-load_x X12, 9 * portWORD_SIZE( SP )
+load_x  X1,  1 * portWORD_SIZE( SP )
+load_x  X5,  2 * portWORD_SIZE( SP )
+load_x  X6,  3 * portWORD_SIZE( SP )
+load_x  X7,  4 * portWORD_SIZE( SP )
+load_x  X8,  5 * portWORD_SIZE( SP )
+load_x  X9,  6 * portWORD_SIZE( SP )
+load_x X10,  7 * portWORD_SIZE( SP )
+load_x X11,  8 * portWORD_SIZE( SP )
+load_x X12,  9 * portWORD_SIZE( SP )
 load_x X13, 10 * portWORD_SIZE( SP )
 load_x X14, 11 * portWORD_SIZE( SP )
 load_x X15, 12 * portWORD_SIZE( SP )
