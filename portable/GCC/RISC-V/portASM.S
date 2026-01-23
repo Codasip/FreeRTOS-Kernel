@@ -277,13 +277,13 @@ xPortStartFirstTask:
     store_w x5, 0( X6 )                     /* Restore the critical nesting value for this task. */
 
     load_w  x5, portMSTATUS_OFFSET * portWORD_SIZE( SP )    /* Initial mstatus into x5 (t0). */
-    addi    x5, x5, 0x08                    /* Set MIE bit so the first task starts with interrupts enabled - required as returns with ret not eret. */
-    csrrw   x0, mstatus, x5                 /* Interrupts enabled from here! */
+    csrrw   x0, mstatus, x5                 /* Restore Initial mstatus value */
 
     load_x  X5, 2 * portWORD_SIZE( SP )     /* Initial x5 (t0) value. */
     load_x  X6, 3 * portWORD_SIZE( SP )     /* Initial x6 (t1) value. */
 
     ADDI    SP, SP, portCONTEXT_SIZE
+    csrsi   mstatus, 0x8                    /* Set MIE bit so the first task starts with interrupts enabled - required as returns with ret not eret. Interrupts enabled from here!*/
     ret
 /*-----------------------------------------------------------*/
 
