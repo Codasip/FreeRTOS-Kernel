@@ -219,6 +219,7 @@ pxPortInitialiseStack:
     store_x A2, 0(A0)                   /* Task parameters (pvParameters parameter) goes into register X10/a0 on the stack. */
     ADDI A0, A0, -(6 * portWORD_SIZE)   /* Space for registers x5-x9 + taskReturnAddress. */
     load_a T0, xTaskReturnAddress
+    load_x T0, 0(T0)
     store_x T0, 0(A0)                   /* Return address onto the stack. */
     addi t0, x0, portasmADDITIONAL_CONTEXT_SIZE /* The number of chip specific additional registers. */
 chip_specific_stack_frame:              /* First add any chip specific registers to the stack frame being created. */
