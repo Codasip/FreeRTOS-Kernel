@@ -30,13 +30,17 @@
 #define PORTCONTEXT_H
 
 #ifdef __CHERI_PURE_CAPABILITY__
-   #define store_x sc
-   #define load_x lc
-   #define load_a lgc
+   #define load_a  lgc  /* Load an immediate pointer (i.e. load immediate address and make it a capability) */
+   #define load_x  lc   /* Load  a pointer, i.e. a capability from memory */
+   #define store_x sc   /* Store a pointer, i.e. a capability to memory */
 #if __riscv_xlen == 64      
-   #define portWORD_SIZE    16
+   #define portWORD_SIZE    16  /* Size of a capability on the stack */
+   #define load_w           ld  /* Load a word from memory (64bit) - For CHERI this is different to a capability which is (128bit)*/
+   #define store_w          sd  /* Store a word  to memory (64bit) - For CHERI this is different to a capability which is (128bit)*/ 
 #elif __riscv_xlen == 32
-   #define portWORD_SIZE    8
+   #define portWORD_SIZE    8   /* Size of a capability on the stack */
+   #define load_w           lw  /* Load a word from memory (32bit) - For CHERI this is different to a capability which is (64bit)*/
+   #define store_w          sw  /* Store a word to memory (32bit) - For CHERI this is different to a capability which is (64bit)*/
 #endif
    #define X0 c0
    #define X1 c1
@@ -81,18 +85,20 @@
    #define ADDI caddi
    #define MV   cmv
 #else
-#define load_a la
 #if __riscv_xlen == 64
-    #define portWORD_SIZE    8
-    #define store_x          sd
-    #define load_x           ld
+   #define portWORD_SIZE    8
+   #define load_w           ld  /* Load a word from memory (64bit)*/
+   #define store_w          sd  /* Store a word to memory (64bit) */ 
 #elif __riscv_xlen == 32
-    #define store_x          sw
-    #define load_x           lw
-    #define portWORD_SIZE    4
+   #define portWORD_SIZE    4
+   #define load_w           lw  /* Load a word from memory (32bit)*/
+   #define store_w          sw  /* Store a word to memory (32bit) */
 #else
-    #error Assembler did not define __riscv_xlen
+   #error Assembler did not define __riscv_xlen
 #endif
+   #define load_a  la        /* Load an immediate pointer (i.e. load immediate address) */
+   #define load_x  load_w    /* Load  a word from memory */
+   #define store_x store_w   /* Store a word to memory */
    #define X0 x0
    #define X1 x1
    #define X2 x2
@@ -195,12 +201,13 @@ store_x X15, 12 * portWORD_SIZE( SP )
     store_x X31, 28 * portWORD_SIZE( SP )
 #endif /* ifndef __riscv_32e */
 
-load_a T0, xCriticalNesting /* Load the value of xCriticalNesting into t0. */      
-store_x T0, portCRITICAL_NESTING_OFFSET * portWORD_SIZE( SP ) /* Store the critical nesting value to the stack. */
+load_a T0, xCriticalNesting
+load_w t0, 0( T0 )                                            /* Load the value of xCriticalNesting into t0. */
+store_w t0, portCRITICAL_NESTING_OFFSET * portWORD_SIZE( SP ) /* Store the critical nesting value to the stack. */
 
 
 csrr t0, mstatus /* Required for MPIE bit. */
-store_x T0, portMSTATUS_OFFSET * portWORD_SIZE( SP ) /* Store the mstatus value to the stack. */
+store_w t0, portMSTATUS_OFFSET * portWORD_SIZE( SP ) /* Store the mstatus value to the stack. */
 
 portasmSAVE_ADDITIONAL_REGISTERS /* Defined in freertos_risc_v_chip_specific_extensions.h to save any registers unique to the RISC-V implementation. */
 
@@ -245,12 +252,13 @@ csrw MEPC, T0
 portasmRESTORE_ADDITIONAL_REGISTERS
 
 /* Load mstatus with the interrupt enable bits used by the task. */
-load_x T0, portMSTATUS_OFFSET * portWORD_SIZE( SP )
+load_w t0, portMSTATUS_OFFSET * portWORD_SIZE( SP )
 csrw mstatus, t0                                             /* Required for MPIE bit. */
 
-load_x T0, portCRITICAL_NESTING_OFFSET * portWORD_SIZE( SP ) /* Obtain xCriticalNesting value for this task from task's stack. */
+load_w t0, portCRITICAL_NESTING_OFFSET * portWORD_SIZE( SP ) /* Obtain xCriticalNesting value for this task from task's stack. */
 load_a T1, pxCriticalNesting                                 /* Load the address of xCriticalNesting into t1. */
-store_x T0, 0 ( T1 )                                         /* Restore the critical nesting value for this task. */
+load_x T1, 0( T1 )
+store_w t0, 0 ( T1 )                                         /* Restore the critical nesting value for this task. */
 
 load_x X1, 1 * portWORD_SIZE( SP )
 load_x X5, 2 * portWORD_SIZE( SP )

@@ -207,9 +207,9 @@ pxPortInitialiseStack:
     or t0, t0, t1                       /* Set MPIE and MPP bits in mstatus value. */
 
     ADDI A0, A0, -portWORD_SIZE
-    store_x T0, 0(A0)                   /* mstatus onto the stack. */
+    store_w t0, 0(A0)                   /* mstatus onto the stack. */
     ADDI A0, A0, -portWORD_SIZE         /* Space for critical nesting count. */
-    store_x X0, 0(A0)                   /* Critical nesting count starts at 0 for every task. */
+    store_w x0, 0(A0)                   /* Critical nesting count starts at 0 for every task. */
 
 #ifdef __riscv_32e
     ADDI A0, A0, -(6 * portWORD_SIZE)   /* Space for registers x10-x15. */
@@ -270,11 +270,12 @@ xPortStartFirstTask:
     load_x  X31, 28 * portWORD_SIZE( SP )   /* t6 */
 #endif
 
-    load_x  X5, portCRITICAL_NESTING_OFFSET * portWORD_SIZE( SP )    /* Obtain xCriticalNesting value for this task from task's stack. */
-    load_a  X6, pxCriticalNesting           /* Load the address of xCriticalNesting into x6. */
-    store_x X5, 0( X6 )                     /* Restore the critical nesting value for this task. */
+    load_w  x5, portCRITICAL_NESTING_OFFSET * portWORD_SIZE( SP )    /* Obtain xCriticalNesting value for this task from task's stack. */
+    load_a  X6, pxCriticalNesting
+    load_x  X6, 0( X6 )                     /* Load the address of xCriticalNesting into x6. */
+    store_w x5, 0( X6 )                     /* Restore the critical nesting value for this task. */
 
-    load_x  X5, portMSTATUS_OFFSET * portWORD_SIZE( SP )    /* Initial mstatus into x5 (t0). */
+    load_w  x5, portMSTATUS_OFFSET * portWORD_SIZE( SP )    /* Initial mstatus into x5 (t0). */
     addi    x5, x5, 0x08                    /* Set MIE bit so the first task starts with interrupts enabled - required as returns with ret not eret. */
     csrrw   x0, mstatus, x5                 /* Interrupts enabled from here! */
 
