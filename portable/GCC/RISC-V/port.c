@@ -1,6 +1,7 @@
 /*
  * FreeRTOS Kernel V11.2.0
  * Copyright (C) 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2025-2026 Codasip s.r.o.
  *
  * SPDX-License-Identifier: MIT
  *
@@ -109,7 +110,8 @@ size_t xCriticalNesting = ( size_t ) 0xaaaaaaaa;
 size_t * pxCriticalNesting = &xCriticalNesting;
 
 /* Used to catch tasks that attempt to return from their implementing function. */
-size_t xTaskReturnAddress = ( size_t ) portTASK_RETURN_ADDRESS;
+/* NOTE: If using a CHERI system portTASK_RETURN_ADDRESS (configTASK_RETURN_ADDRESS) must be a valid capability with execute permsissions*/
+uintptr_t xTaskReturnAddress = ( uintptr_t ) portTASK_RETURN_ADDRESS;
 
 /* Set configCHECK_FOR_STACK_OVERFLOW to 3 to add ISR stack checking to task
  * stack checking.  A problem in the ISR stack will trigger an assert, not call

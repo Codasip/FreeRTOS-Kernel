@@ -1,6 +1,7 @@
 /*
  * FreeRTOS Kernel V11.2.0
  * Copyright (C) 2021 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * Copyright 2025-2026 Codasip s.r.o.
  *
  * SPDX-License-Identifier: MIT
  *
