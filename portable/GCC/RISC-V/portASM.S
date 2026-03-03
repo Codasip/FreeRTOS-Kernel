@@ -332,6 +332,9 @@ freertos_risc_v_mtimer_interrupt_handler:
     call vTaskSwitchContext
 exit_without_context_switch:
     portcontextRESTORE_CONTEXT
+
+.Lfunc_end0:
+    .size freertos_risc_v_mtimer_interrupt_handler, .Lfunc_end0-freertos_risc_v_mtimer_interrupt_handler
 /*-----------------------------------------------------------*/
 
 .section .text.freertos_risc_v_trap_handler
@@ -401,4 +404,7 @@ application_exception_handler:
 
 processed_source:
     portcontextRESTORE_CONTEXT
+
+.Lfunc_end1:
+    .size freertos_risc_v_trap_handler, .Lfunc_end1-freertos_risc_v_trap_handler
 /*-----------------------------------------------------------*/
